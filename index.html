@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Polling App – Crea un sondaggio con scelte</title>
+</head>
+<body>
+  <h1>Polling App – Crea un sondaggio con scelte</h1>
+
+  <!-- Login Form -->
+  <form id="login-form">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button type="submit">Login</button>
+  </form>
+
+  <button id="logout-btn" style="display:none;">Logout</button>
+
+  <!-- Crea sondaggio -->
+  <div id="create-poll-section" style="display:none; margin-top:30px;">
+    <h2>Crea un sondaggio</h2>
+    <form id="poll-form">
+      <input type="text" id="question" placeholder="Domanda del sondaggio" required><br><br>
+      <input type="text" id="choice1" placeholder="Scelta 1" required><br>
+      <input type="text" id="choice2" placeholder="Scelta 2" required><br>
+      <input type="text" id="choice3" placeholder="Scelta 3 (facoltativa)"><br><br>
+      <button type="submit">Crea sondaggio</button>
+    </form>
+    <p id="result"></p>
+  </div>
+
+  <hr>
+
+  <h2>Vota un sondaggio anonimo</h2>
+
+  <label for="poll-id-input">Inserisci l'ID del sondaggio:</label>
+  <input type="number" id="poll-id-input" min="1" required />
+  <button id="load-poll-btn">Carica sondaggio</button>
+  <button id="show-results-btn" style="display:none; margin-left:10px;">Mostra risultati</button>
+
+  <div id="poll-section" style="display:none; margin-top:20px;">
+    <h3 id="poll-question"></h3>
+    <form id="vote-form">
+      <div id="choices-container"></div>
+      <button type="submit">Vota</button>
+    </form>
+    <p id="vote-result"></p>
+  </div>
+
+  <div id="results-section" style="margin-top:20px;">
+    <h3>Risultati sondaggio</h3>
+    <ul id="results-list"></ul>
+  </div>
+
+  <script>
+    let authToken = "";
+    let currentPollId = null;
+    let isSuperuser = false;
+
+    // Login
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/api-token-auth/", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+
+        const data = await response.json();
+        console.log("✅ Token ricevuto:", data);
+
+        if (response.status === 200 && data.token) {
+          authToken = data.token;
+          isSuperuser = data.is_superuser || false;
+
+          alert("✅ Login effettuato!");
+          document.getElementById("create-poll-section").style.display = "block";
+          document.getElementById("login-form").style.display = "none";
+          document.getElementById("logout-btn").style.display = "inline-block";
+
+          if (isSuperuser) {
+            document.getElementById("show-results-btn").style.display = "inline-block";
+          }
+
+        } else {
+          alert("❌ Errore login: " + JSON.stringify(data));
+        }
+      } catch (error) {
+        alert("❌ Errore di rete: " + error.message);
+      }
+    });
+
+    // Logout
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      authToken = "";
+      isSuperuser = false;
+      document.getElementById("create-poll-section").style.display = "none";
+      document.getElementById("login-form").style.display = "block";
+      document.getElementById("logout-btn").style.display = "none";
+      document.getElementById("show-results-btn").style.display = "none";
+      alert("✅ Logout effettuato!");
+    });
+
+    // Crea sondaggio
+    document.getElementById("poll-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const question = document.getElementById("question").value;
+      const choice1 = document.getElementById("choice1").value;
+      const choice2 = document.getElementById("choice2").value;
+      const choice3 = document.getElementById("choice3").value;
+
+      try {
+        const pollRes = await fetch("http://127.0.0.1:8000/api/polls/", {
+          method: "POST",
+          headers: {
+            "Authorization": "Token " + authToken,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ question })
+        });
+
+        const pollData = await pollRes.json();
+        if (pollRes.status !== 201) {
+          document.getElementById("result").innerText = "❌ Errore sondaggio: " + JSON.stringify(pollData);
+          return;
+        }
+
+        const pollId = pollData.id;
+        const choices = [choice1, choice2];
+        if (choice3.trim() !== "") choices.push(choice3);
+
+        for (const choiceText of choices) {
+          const choiceRes = await fetch("http://127.0.0.1:8000/api/choices/", {
+            method: "POST",
+            headers: {
+              "Authorization": "Token " + authToken,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ choice_text: choiceText, poll: pollId })
+          });
+
+          const choiceData = await choiceRes.json();
+          if (choiceRes.status !== 201) {
+            document.getElementById("result").innerText =
+              "⚠️ Errore nella creazione di una scelta: " + JSON.stringify(choiceData);
+            return;
+          }
+        }
+
+        document.getElementById("result").innerText = "✅ Sondaggio e scelte creati correttamente!";
+      } catch (error) {
+        document.getElementById("result").innerText = "❌ Errore di rete: " + error.message;
+      }
+    });
+
+    // Carica sondaggio per votare
+    document.getElementById('load-poll-btn').addEventListener('click', async () => {
+      const pollIdInput = document.getElementById('poll-id-input').value.trim();
+      if (!pollIdInput) {
+        alert('Inserisci un ID valido');
+        return;
+      }
+
+      currentPollId = pollIdInput;
+
+      const response = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`);
+      if (!response.ok) {
+        alert('Sondaggio non trovato');
+        document.getElementById('poll-section').style.display = 'none';
+        document.getElementById('results-section').style.display = 'none';
+        return;
+      }
+
+      const poll = await response.json();
+      document.getElementById('poll-question').innerText = poll.question;
+
+      const choicesContainer = document.getElementById('choices-container');
+      choicesContainer.innerHTML = '';
+      poll.choices.forEach(choice => {
+        const label = document.createElement('label');
+        label.innerHTML = `
+          <input type="radio" name="choice" value="${choice.id}" required>
+          ${choice.choice_text}
+        `;
+        choicesContainer.appendChild(label);
+        choicesContainer.appendChild(document.createElement('br'));
+      });
+
+      document.getElementById('poll-section').style.display = 'block';
+      document.getElementById('vote-result').innerText = '';
+      document.getElementById('results-section').style.display = 'none';
+    });
+
+    // Voto anonimo
+    document.getElementById('vote-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const selectedChoice = document.querySelector('input[name="choice"]:checked');
+      if (!selectedChoice) {
+        alert('Seleziona una scelta');
+        return;
+      }
+
+      const voteData = {
+        choice: selectedChoice.value,
+        poll: currentPollId
+      };
+
+      const response = await fetch('http://127.0.0.1:8000/api/votes/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(voteData)
+      });
+
+      if (response.status === 201) {
+        document.getElementById('vote-result').innerText = '✅ Voto registrato con successo!';
+      } else {
+        const errorData = await response.json();
+        document.getElementById('vote-result').innerText = '❌ Errore nel voto: ' + JSON.stringify(errorData);
+      }
+    });
+
+    // Mostra risultati
+    document.getElementById('show-results-btn').addEventListener('click', async () => {
+      if (!currentPollId) {
+        alert("⚠️ Carica prima un sondaggio");
+        return;
+      }
+      await loadPollResults(currentPollId);
+    });
+
+    // Carica risultati sondaggio
+    async function loadPollResults(pollId) {
+      const response = await fetch(`http://127.0.0.1:8000/api/polls/${pollId}/results/`, {
+        headers: {
+          "Authorization": "Token " + authToken
+        }
+      });
+
+      const resultsList = document.getElementById('results-list');
+      resultsList.innerHTML = '';
+      if (!response.ok) {
+        resultsList.innerHTML = '<li>❌ Errore nel caricamento risultati.</li>';
+        document.getElementById('results-section').style.display = 'block';
+        return;
+      }
+
+      const data = await response.json();
+      data.results.forEach(result => {
+        const li = document.createElement('li');
+        li.textContent = `${result.choice}: ${result.votes} voto${result.votes !== 1 ? 'i' : ''}`;
+        resultsList.appendChild(li);
+      });
+
+      document.getElementById('results-section').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
+
+
