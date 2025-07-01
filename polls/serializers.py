@@ -22,3 +22,4 @@ class VoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vote
         fields = '__all__'
+        read_only_fields = ('voted_by',)

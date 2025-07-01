@@ -3,10 +3,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 from rest_framework.decorators import action
-
 from .models import Poll, Choice, Vote
 from .serializers import PollSerializer, ChoiceSerializer, VoteSerializer
 from .permissions import IsOwnerOrReadOnly
+from rest_framework import status
 
 
 class PollViewSet(viewsets.ModelViewSet):
@@ -22,10 +22,7 @@ class PollViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAdminUser])
     def results(self, request, pk=None):
-        """
-        Solo i superuser possono vedere i risultati.
-        Accessibile via: /polls/<id>/results/
-        """
+
         try:
             poll = Poll.objects.get(pk=pk)
         except Poll.DoesNotExist:
@@ -53,13 +50,18 @@ class ChoiceCreateView(generics.CreateAPIView):
 
 
 class VoteCreateView(APIView):
-    permission_classes = [AllowAny]  # Anche utenti anonimi possono votare
-
+    permission_classes = [AllowAny]
     def post(self, request):
         serializer = VoteSerializer(data=request.data)
         if serializer.is_valid():
-            voted_by_user = request.user if request.user.is_authenticated else None
-            serializer.save(voted_by=voted_by_user)
+            serializer.save(voted_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class ChoiceListView(generics.ListAPIView):
+    serializer_class = ChoiceSerializer
 
+    def get_queryset(self):
+        poll_id = self.request.query_params.get('poll')
+        if poll_id:
+            return Choice.objects.filter(poll_id=poll_id)
+        return Choice.objects.all()

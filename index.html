@@ -6,7 +6,7 @@
 </head>
 <body>
   <h1>Polling App – Crea un sondaggio con scelte</h1>
-
+  <hr>
   <!-- Login Form -->
   <form id="login-form">
     <h2>Login</h2>
@@ -32,7 +32,7 @@
 
   <hr>
 
-  <h2>Vota un sondaggio anonimo</h2>
+  <h2>Vota un sondaggio (devi essere registrato e loggato)</h2>
 
   <label for="poll-id-input">Inserisci l'ID del sondaggio:</label>
   <input type="number" id="poll-id-input" min="1" required />
@@ -48,220 +48,246 @@
     <p id="vote-result"></p>
   </div>
 
-  <div id="results-section" style="margin-top:20px;">
+  <div id="results-section" style="margin-top:20px; display:none;">
     <h3>Risultati sondaggio</h3>
     <ul id="results-list"></ul>
   </div>
 
-  <script>
-    let authToken = "";
-    let currentPollId = null;
-    let isSuperuser = false;
+<script>
+  let authToken = "";
+  let currentPollId = null;
+  let isSuperuser = false;
+  // Login
+  document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-    // Login
-    document.getElementById("login-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api-token-auth/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+      });
 
-      try {
-        const response = await fetch("http://127.0.0.1:8000/api-token-auth/", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
-        });
+      const data = await response.json();
 
-        const data = await response.json();
-        console.log("✅ Token ricevuto:", data);
+      if (response.status === 200 && data.token) {
+        authToken = data.token;
+        isSuperuser = data.is_superuser || false;
 
-        if (response.status === 200 && data.token) {
-          authToken = data.token;
-          isSuperuser = data.is_superuser || false;
+        alert("✅ Login effettuato!");
+        document.getElementById("create-poll-section").style.display = "block";
+        document.getElementById("login-form").style.display = "none";
+        document.getElementById("register-form").style.display = "none";
+        document.getElementById("logout-btn").style.display = "inline-block";
 
-          alert("✅ Login effettuato!");
-          document.getElementById("create-poll-section").style.display = "block";
-          document.getElementById("login-form").style.display = "none";
-          document.getElementById("logout-btn").style.display = "inline-block";
-
-          if (isSuperuser) {
-            document.getElementById("show-results-btn").style.display = "inline-block";
-          }
-
+        if (isSuperuser) {
+          document.getElementById("show-results-btn").style.display = "inline-block";
         } else {
-          alert("❌ Errore login: " + JSON.stringify(data));
+          document.getElementById("show-results-btn").style.display = "none";
         }
-      } catch (error) {
-        alert("❌ Errore di rete: " + error.message);
+
+      } else {
+        alert("❌ Errore login: " + JSON.stringify(data));
       }
-    });
+    } catch (error) {
+      alert("❌ Errore di rete: " + error.message);
+    }
+  });
 
-    // Logout
-    document.getElementById("logout-btn").addEventListener("click", () => {
-      authToken = "";
-      isSuperuser = false;
-      document.getElementById("create-poll-section").style.display = "none";
-      document.getElementById("login-form").style.display = "block";
-      document.getElementById("logout-btn").style.display = "none";
-      document.getElementById("show-results-btn").style.display = "none";
-      alert("✅ Logout effettuato!");
-    });
+  // Logout
+  document.getElementById("logout-btn").addEventListener("click", () => {
+    authToken = "";
+    isSuperuser = false;
+    currentPollId = null;
 
-    // Crea sondaggio
-    document.getElementById("poll-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    document.getElementById("create-poll-section").style.display = "none";
+    document.getElementById("login-form").style.display = "block";
+    document.getElementById("register-form").style.display = "block";
+    document.getElementById("logout-btn").style.display = "none";
+    document.getElementById("show-results-btn").style.display = "none";
+    document.getElementById("poll-section").style.display = "none";
+    document.getElementById("results-section").style.display = "none";
+    document.getElementById("vote-result").innerText = "";
+    alert("✅ Logout effettuato!");
+  });
 
-      const question = document.getElementById("question").value;
-      const choice1 = document.getElementById("choice1").value;
-      const choice2 = document.getElementById("choice2").value;
-      const choice3 = document.getElementById("choice3").value;
+  // Crea sondaggio
+  document.getElementById("poll-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-      try {
-        const pollRes = await fetch("http://127.0.0.1:8000/api/polls/", {
+    if (!authToken) {
+      alert("❌ Devi essere loggato per creare un sondaggio");
+      return;
+    }
+
+    const question = document.getElementById("question").value;
+    const choice1 = document.getElementById("choice1").value;
+    const choice2 = document.getElementById("choice2").value;
+    const choice3 = document.getElementById("choice3").value;
+
+    try {
+      // Crea sondaggio
+      const pollRes = await fetch("http://127.0.0.1:8000/api/polls/", {
+        method: "POST",
+        headers: {
+          "Authorization": "Token " + authToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ question })
+      });
+
+      const pollData = await pollRes.json();
+      if (pollRes.status !== 201) {
+        document.getElementById("result").innerText = "❌ Errore sondaggio: " + JSON.stringify(pollData);
+        return;
+      }
+
+      const pollId = pollData.id;
+      const choices = [choice1, choice2];
+      if (choice3.trim() !== "") choices.push(choice3);
+
+      // Crea scelte (POST su /api/choices/create/)
+      for (const choiceText of choices) {
+        const choiceRes = await fetch("http://127.0.0.1:8000/api/choices/create/", {
           method: "POST",
           headers: {
             "Authorization": "Token " + authToken,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ question })
+          body: JSON.stringify({ choice_text: choiceText, poll: pollId })
         });
 
-        const pollData = await pollRes.json();
-        if (pollRes.status !== 201) {
-          document.getElementById("result").innerText = "❌ Errore sondaggio: " + JSON.stringify(pollData);
+        const choiceData = await choiceRes.json();
+        if (choiceRes.status !== 201) {
+          document.getElementById("result").innerText =
+            "⚠️ Errore nella creazione di una scelta: " + JSON.stringify(choiceData);
           return;
         }
-
-        const pollId = pollData.id;
-        const choices = [choice1, choice2];
-        if (choice3.trim() !== "") choices.push(choice3);
-
-        for (const choiceText of choices) {
-          const choiceRes = await fetch("http://127.0.0.1:8000/api/choices/", {
-            method: "POST",
-            headers: {
-              "Authorization": "Token " + authToken,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ choice_text: choiceText, poll: pollId })
-          });
-
-          const choiceData = await choiceRes.json();
-          if (choiceRes.status !== 201) {
-            document.getElementById("result").innerText =
-              "⚠️ Errore nella creazione di una scelta: " + JSON.stringify(choiceData);
-            return;
-          }
-        }
-
-        document.getElementById("result").innerText = "✅ Sondaggio e scelte creati correttamente!";
-      } catch (error) {
-        document.getElementById("result").innerText = "❌ Errore di rete: " + error.message;
-      }
-    });
-
-    // Carica sondaggio per votare
-    document.getElementById('load-poll-btn').addEventListener('click', async () => {
-      const pollIdInput = document.getElementById('poll-id-input').value.trim();
-      if (!pollIdInput) {
-        alert('Inserisci un ID valido');
-        return;
       }
 
-      currentPollId = pollIdInput;
+      document.getElementById("result").innerText = "✅ Sondaggio e scelte creati correttamente!";
+      document.getElementById("poll-form").reset();
+    } catch (error) {
+      document.getElementById("result").innerText = "❌ Errore di rete: " + error.message;
+    }
+  });
 
-      const response = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`);
-      if (!response.ok) {
-        alert('Sondaggio non trovato');
-        document.getElementById('poll-section').style.display = 'none';
-        document.getElementById('results-section').style.display = 'none';
-        return;
-      }
+  // Carica sondaggio per votare
+  document.getElementById('load-poll-btn').addEventListener('click', async () => {
+    const pollIdInput = document.getElementById('poll-id-input').value.trim();
+    if (!pollIdInput) {
+      alert('Inserisci un ID valido');
+      return;
+    }
 
-      const poll = await response.json();
-      document.getElementById('poll-question').innerText = poll.question;
+    currentPollId = pollIdInput;
 
-      const choicesContainer = document.getElementById('choices-container');
-      choicesContainer.innerHTML = '';
-      poll.choices.forEach(choice => {
-        const label = document.createElement('label');
-        label.innerHTML = `
-          <input type="radio" name="choice" value="${choice.id}" required>
-          ${choice.choice_text}
-        `;
-        choicesContainer.appendChild(label);
-        choicesContainer.appendChild(document.createElement('br'));
-      });
-
-      document.getElementById('poll-section').style.display = 'block';
-      document.getElementById('vote-result').innerText = '';
+    const response = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`);
+    if (!response.ok) {
+      alert('Sondaggio non trovato');
+      document.getElementById('poll-section').style.display = 'none';
       document.getElementById('results-section').style.display = 'none';
+      return;
+    }
+
+    const poll = await response.json();
+    document.getElementById('poll-question').innerText = poll.question;
+
+    const choicesContainer = document.getElementById('choices-container');
+    choicesContainer.innerHTML = '';
+    poll.choices.forEach(choice => {
+      const label = document.createElement('label');
+      label.innerHTML = `
+        <input type="radio" name="choice" value="${choice.id}" required> ${choice.choice_text}
+      `;
+      choicesContainer.appendChild(label);
+      choicesContainer.appendChild(document.createElement('br'));
     });
 
-    // Voto anonimo
-    document.getElementById('vote-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const selectedChoice = document.querySelector('input[name="choice"]:checked');
-      if (!selectedChoice) {
-        alert('Seleziona una scelta');
-        return;
-      }
+    document.getElementById('poll-section').style.display = 'block';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('vote-result').innerText = '';
+  });
 
-      const voteData = {
-        choice: selectedChoice.value,
-        poll: currentPollId
-      };
+  // Vota sondaggio
+  document.getElementById('vote-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-      const response = await fetch('http://127.0.0.1:8000/api/votes/', {
+    if (!authToken) {
+      alert("❌ Devi essere loggato per votare");
+      return;
+    }
+
+    const selectedChoice = document.querySelector('input[name="choice"]:checked');
+    if (!selectedChoice) {
+      alert('Seleziona una scelta');
+      return;
+    }
+
+    const choiceId = selectedChoice.value;
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/vote/', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(voteData)
+        headers: {
+          'Authorization': 'Token ' + authToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ poll:currentPollId,choice: choiceId })
       });
 
       if (response.status === 201) {
-        document.getElementById('vote-result').innerText = '✅ Voto registrato con successo!';
+        document.getElementById('vote-result').innerText = "✅ Voto registrato!";
       } else {
         const errorData = await response.json();
-        document.getElementById('vote-result').innerText = '❌ Errore nel voto: ' + JSON.stringify(errorData);
+        document.getElementById('vote-result').innerText = "❌ Errore voto: " + JSON.stringify(errorData);
       }
-    });
+    } catch (error) {
+      document.getElementById('vote-result').innerText = "❌ Errore di rete: " + error.message;
+    }
+  });
 
-    // Mostra risultati
-    document.getElementById('show-results-btn').addEventListener('click', async () => {
-      if (!currentPollId) {
-        alert("⚠️ Carica prima un sondaggio");
-        return;
-      }
-      await loadPollResults(currentPollId);
-    });
+  // Mostra risultati sondaggio (solo superuser)
+   document.getElementById('show-results-btn').addEventListener('click', async () => {
+    if (!currentPollId) {
+      alert('Carica prima un sondaggio');
+      return;
+    }
 
-    // Carica risultati sondaggio
-    async function loadPollResults(pollId) {
-      const response = await fetch(`http://127.0.0.1:8000/api/polls/${pollId}/results/`, {
-        headers: {
-          "Authorization": "Token " + authToken
-        }
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/results/`, {
+        headers: { 'Authorization': 'Token ' + authToken }
       });
 
-      const resultsList = document.getElementById('results-list');
-      resultsList.innerHTML = '';
-      if (!response.ok) {
-        resultsList.innerHTML = '<li>❌ Errore nel caricamento risultati.</li>';
-        document.getElementById('results-section').style.display = 'block';
+      if (response.status === 403) {
+        alert('❌ Solo i superuser possono vedere i risultati di questo sondaggio');
         return;
       }
 
-      const data = await response.json();
-      data.results.forEach(result => {
+      if (!response.ok) {
+        alert('❌ Errore nel caricamento dei risultati');
+        return;
+      }
+
+      const results = await response.json();
+      const resultsList = document.getElementById('results-list');
+      resultsList.innerHTML = '';
+
+      results.forEach(r => {
         const li = document.createElement('li');
-        li.textContent = `${result.choice}: ${result.votes} voto${result.votes !== 1 ? 'i' : ''}`;
+        li.textContent = `${r.choice_text}: ${r.votes} voti`;
         resultsList.appendChild(li);
       });
 
       document.getElementById('results-section').style.display = 'block';
+
+    } catch (error) {
+      alert('❌ Errore di rete: ' + error.message);
     }
-  </script>
+  });
+</script>
 </body>
 </html>
-
-
