@@ -3,4 +3,3 @@ from django.db import models
 
 class CustomUser(AbstractUser):
     bio = models.TextField(blank=True, null=True)
-
