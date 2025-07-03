@@ -1,7 +1,7 @@
-from rest_framework import generics, viewsets, status
+from rest_framework import generics, viewsets, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser,SAFE_METHODS, BasePermission
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 from rest_framework.decorators import action
 from .models import Poll, Choice, Vote
 from .serializers import PollSerializer, ChoiceSerializer, VoteSerializer
@@ -38,7 +38,10 @@ class PollViewSet(viewsets.ModelViewSet):
             "results": results
         })
 
-
+class ChoiceViewSet(viewsets.ModelViewSet):
+    queryset = Choice.objects.all()
+    serializer_class = ChoiceSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 class ChoiceCreateView(generics.CreateAPIView):
     queryset = Choice.objects.all()
     serializer_class = ChoiceSerializer
@@ -64,18 +67,3 @@ class ChoiceListView(generics.ListAPIView):
         if poll_id:
             return Choice.objects.filter(poll_id=poll_id)
         return Choice.objects.all()
-
-    class IsOwnerOrReadOnly(BasePermission):
-        def has_permission(self, request, view):
-            # Permetti a chi è autenticato di creare (POST)
-            if request.method == 'POST':
-                return request.user and request.user.is_authenticated
-            # Per tutti gli altri metodi, lascia che has_object_permission gestisca
-            return True
-
-        def has_object_permission(self, request, view, obj):
-            # Permetti la lettura a tutti
-            if request.method in SAFE_METHODS:
-                return True
-            # Permetti scrittura solo al proprietario
-            return obj.created_by == request.user
