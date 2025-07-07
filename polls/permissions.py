@@ -14,3 +14,13 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         # Per metodi scrittura solo il creatore o superuser
         return obj.created_by == request.user or request.user.is_superuser
+class IsChoiceOwnerOrReadOnly(permissions.BasePermission):
+    """
+    Permette la modifica di una scelta solo al creatore del sondaggio o a un superuser.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Permetti operazioni di sola lettura a chiunque
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # Permetti modifica solo al creatore del sondaggio o al superuser
+        return obj.poll.created_by == request.user or request.user.is_superuser

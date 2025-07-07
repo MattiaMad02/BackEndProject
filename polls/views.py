@@ -1,11 +1,11 @@
 from rest_framework import generics, viewsets, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.decorators import action
 from .models import Poll, Choice, Vote
 from .serializers import PollSerializer, ChoiceSerializer, VoteSerializer
-from .permissions import IsOwnerOrReadOnly
+from .permissions import IsOwnerOrReadOnly, IsChoiceOwnerOrReadOnly
 
 class PollViewSet(viewsets.ModelViewSet):
     queryset = Poll.objects.all()
@@ -18,7 +18,7 @@ class PollViewSet(viewsets.ModelViewSet):
     def get_serializer_context(self):
         return {'request': self.request}
 
-    @action(detail=True, methods=['get'], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
     def results(self, request, pk=None):
 
         try:
@@ -41,7 +41,8 @@ class PollViewSet(viewsets.ModelViewSet):
 class ChoiceViewSet(viewsets.ModelViewSet):
     queryset = Choice.objects.all()
     serializer_class = ChoiceSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly, IsChoiceOwnerOrReadOnly]
+
 class ChoiceCreateView(generics.CreateAPIView):
     queryset = Choice.objects.all()
     serializer_class = ChoiceSerializer
@@ -52,13 +53,35 @@ class ChoiceCreateView(generics.CreateAPIView):
 
 
 class VoteCreateView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
     def post(self, request):
-        serializer = VoteSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(voted_by=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        poll_id = request.data.get("poll")
+        choice_id = request.data.get("choice")
+
+        # Verifica che il sondaggio esista
+        try:
+            poll = Poll.objects.get(id=poll_id)
+        except Poll.DoesNotExist:
+            return Response({"error": "Sondaggio non trovato."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verifica che la scelta appartenga a quel sondaggio
+        try:
+            choice = Choice.objects.get(id=choice_id, poll=poll)
+        except Choice.DoesNotExist:
+            return Response({"error": "Scelta non valida per questo sondaggio."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Controllo che l'utente non abbia già votato per questo sondaggio
+        if Vote.objects.filter(user=user, poll=poll).exists():
+            return Response({"error": "Hai già votato per questo sondaggio."}, status=status.HTTP_409_CONFLICT)
+
+        # Crea il voto
+        vote = Vote(user=user, poll=poll, choice=choice)
+        vote.save()
+
+        serializer = VoteSerializer(vote)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 class ChoiceListView(generics.ListAPIView):
     serializer_class = ChoiceSerializer
 

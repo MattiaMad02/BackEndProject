@@ -8,7 +8,7 @@ class ChoiceSerializer(serializers.ModelSerializer):
 
 class PollSerializer(serializers.ModelSerializer):
     choices = ChoiceSerializer(many=True, read_only=True)
-
+    created_by = serializers.ReadOnlyField(source='created_by.username')
     class Meta:
         model = Poll
         fields = ['id', 'question', 'created_by', 'created_at', 'choices']
@@ -21,5 +21,5 @@ class PollSerializer(serializers.ModelSerializer):
 class VoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vote
-        fields = '__all__'
+        fields =['id', 'poll', 'choice', 'voted_at']
         read_only_fields = ('voted_by',)
