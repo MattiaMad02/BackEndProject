@@ -112,7 +112,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
       document.getElementById("create-poll-section").style.display = "block";
       document.getElementById("login-form").style.display = "none";
       document.getElementById("logout-btn").style.display = "inline-block";
-      document.getElementById("show-results-btn").style.display = isSuperuser ? "inline-block" : "none";
+      document.getElementById("show-results-btn").style.display = "inline-block";
     } else {
       alert("❌ Errore login: " + JSON.stringify(data));
     }
