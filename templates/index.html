@@ -246,7 +246,7 @@ document.getElementById("load-poll-btn").addEventListener("click", async () => {
   currentPollId = pollIdInput;
 
   try {
-    const response = await fetch(`https://backendproject-production-637c.up.railway.app/polls/${currentPollId}/`);
+    const response = await fetch(`https://backendproject-production-637c.up.railway.app/api/polls/${currentPollId}/`);
     if (!response.ok) {
       alert("Sondaggio non trovato");
       document.getElementById("poll-section").style.display = "none";
