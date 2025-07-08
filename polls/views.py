@@ -6,7 +6,10 @@ from rest_framework.decorators import action
 from .models import Poll, Choice, Vote
 from .serializers import PollSerializer, ChoiceSerializer, VoteSerializer
 from .permissions import IsOwnerOrReadOnly, IsChoiceOwnerOrReadOnly
+from django.shortcuts import render
 
+def home(request):
+    return render(request, 'index.html')
 class PollViewSet(viewsets.ModelViewSet):
     queryset = Poll.objects.all()
     serializer_class = PollSerializer

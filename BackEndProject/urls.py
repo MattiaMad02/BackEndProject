@@ -17,11 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.authtoken.views import obtain_auth_token
-from django.http import HttpResponse
-def home(request):
-    return HttpResponse("Benvenuto nel backend!")
+from polls.views import home
 urlpatterns = [
-path('', home),
+    path('', home,name='home'),
     path('admin/', admin.site.urls),
     path('api/', include('polls.urls')),
     path('api-token-auth/', obtain_auth_token),
