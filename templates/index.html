@@ -90,7 +90,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   const password = document.getElementById("password").value;
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/api-token-auth/", {
+    const response = await fetch("https://backendproject-production-637c.up.railway.app/api-token-auth/", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
@@ -101,7 +101,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
     if (response.status === 200 && data.token) {
       authToken = data.token;
 
-      const profileRes = await fetch("http://127.0.0.1:8000/api/profile/", {
+      const profileRes = await fetch("https://backendproject-production-637c.up.railway.app/api/profile/", {
         headers: { "Authorization": "Token " + authToken }
       });
       const profile = await profileRes.json();
@@ -150,7 +150,7 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
   const password = document.getElementById('reg-password').value;
 
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/register/', {
+    const response = await fetch('https://backendproject-production-637c.up.railway.app/api/register/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -167,7 +167,7 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
       document.getElementById('logout-btn').style.display = 'inline-block';
       document.getElementById('register-form').style.display = 'none';
 
-      const profileRes = await fetch('http://127.0.0.1:8000/api/profile/', {
+      const profileRes = await fetch('https://backendproject-production-637c.up.railway.app/api/profile/', {
         headers: { 'Authorization': 'Token ' + authToken }
       });
 
@@ -197,7 +197,7 @@ document.getElementById("poll-form").addEventListener("submit", async (e) => {
   if (choice3) choices.push(choice3);
 
   try {
-    const pollRes = await fetch("http://127.0.0.1:8000/api/polls/", {
+    const pollRes = await fetch("https://backendproject-production-637c.up.railway.app/api/polls/", {
       method: "POST",
       headers: {
         "Authorization": "Token " + authToken,
@@ -215,7 +215,7 @@ document.getElementById("poll-form").addEventListener("submit", async (e) => {
     const pollId = pollData.id;
 
     for (const choiceText of choices) {
-      const choiceRes = await fetch("http://127.0.0.1:8000/api/choices/custom-create/", {
+      const choiceRes = await fetch("https://backendproject-production-637c.up.railway.app/api/choices/custom-create/", {
         method: "POST",
         headers: {
           "Authorization": "Token " + authToken,
@@ -246,7 +246,7 @@ document.getElementById("load-poll-btn").addEventListener("click", async () => {
   currentPollId = pollIdInput;
 
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`);
+    const response = await fetch(`https://backendproject-production-637c.up.railway.app/polls/${currentPollId}/`);
     if (!response.ok) {
       alert("Sondaggio non trovato");
       document.getElementById("poll-section").style.display = "none";
@@ -268,7 +268,7 @@ document.getElementById("load-poll-btn").addEventListener("click", async () => {
     document.getElementById("results-section").style.display = "none";
 
     // mostra se sei il creatore o superuser
-    const pollDetail = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`, {
+    const pollDetail = await fetch(`https://backendproject-production-637c.up.railway.app/api/polls/${currentPollId}/`, {
       headers: { "Authorization": "Token " + authToken }
     });
     const pollFull = await pollDetail.json();
@@ -291,7 +291,7 @@ document.getElementById("vote-form").addEventListener("submit", async (e) => {
   if (!selected) return alert("Seleziona una scelta");
 
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/vote/", {
+    const res = await fetch("https://backendproject-production-637c.up.railway.app/api/vote/", {
       method: "POST",
       headers: {
         "Authorization": "Token " + authToken,
@@ -316,7 +316,7 @@ document.getElementById("vote-form").addEventListener("submit", async (e) => {
 document.getElementById('show-results-btn').addEventListener('click', async () => {
   if (!currentPollId) return alert('Carica prima un sondaggio');
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/results/`, {
+    const response = await fetch(`https://backendproject-production-637c.up.railway.app/api/polls/${currentPollId}/results/`, {
       headers: { 'Authorization': 'Token ' + authToken }
     });
     if (!response.ok) return alert('❌ Errore nel caricamento dei risultati');
@@ -352,7 +352,7 @@ document.getElementById("edit-poll-form").addEventListener("submit", async (e) =
   }
 
   try {
-    await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`, {
+    await fetch(`https://backendproject-production-637c.up.railway.app/api/polls/${currentPollId}/`, {
       method: "PATCH",
       headers: {
         "Authorization": "Token " + authToken,
@@ -361,13 +361,13 @@ document.getElementById("edit-poll-form").addEventListener("submit", async (e) =
       body: JSON.stringify({ question: newQuestion })
     });
 
-    const pollDetail = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`, {
+    const pollDetail = await fetch(`https://backendproject-production-637c.up.railway.app/api/polls/${currentPollId}/`, {
       headers: { "Authorization": "Token " + authToken }
     });
     const poll = await pollDetail.json();
 
     for (const choice of poll.choices) {
-      await fetch(`http://127.0.0.1:8000/api/choices/${choice.id}/`, {
+      await fetch(`https://backendproject-production-637c.up.railway.app/api/choices/${choice.id}/`, {
         method: "DELETE",
         headers: {
           "Authorization": "Token " + authToken
@@ -376,7 +376,7 @@ document.getElementById("edit-poll-form").addEventListener("submit", async (e) =
     }
 
     for (const choiceText of newChoices) {
-      await fetch("http://127.0.0.1:8000/api/choices/custom-create/", {
+      await fetch("https://backendproject-production-637c.up.railway.app/api/choices/custom-create/", {
         method: "POST",
         headers: {
           "Authorization": "Token " + authToken,
@@ -401,7 +401,7 @@ document.getElementById("delete-poll-btn").addEventListener("click", async () =>
   if (!conferma) return;
 
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/polls/${currentPollId}/`, {
+    const response = await fetch(`https://backendproject-production-637c.up.railway.app/api/polls/${currentPollId}/`, {
       method: "DELETE",
       headers: {
         "Authorization": "Token " + authToken
