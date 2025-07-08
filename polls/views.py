@@ -11,7 +11,7 @@ from django.shortcuts import render
 def home(request):
     return render(request, 'index.html')
 class PollViewSet(viewsets.ModelViewSet):
-    queryset = Poll.objects.all()
+    queryset = Poll.objects.all().order_by('id')
     serializer_class = PollSerializer
     permission_classes = [IsOwnerOrReadOnly]
 
