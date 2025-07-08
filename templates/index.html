@@ -56,7 +56,7 @@
     <p id="vote-result"></p>
   </div>
 
-  <button id="show-results-btn" style="display:none; margin-top:20px;">Mostra risultati sondaggio</button>
+  <button id="show-results-btn" style="margin-top:20px;">Mostra risultati sondaggio</button>
 
   <!-- Nuovo Edit Poll Form -->
   <div id="edit-poll-section" style="display:none; margin-top:30px;">
@@ -315,9 +315,13 @@ document.getElementById("vote-form").addEventListener("submit", async (e) => {
 // MOSTRA RISULTATI
 document.getElementById('show-results-btn').addEventListener('click', async () => {
   if (!currentPollId) return alert('Carica prima un sondaggio');
-  try {
+   try {
+    const headers = {};
+    if (typeof authToken !== 'undefined' && authToken) {
+      headers['Authorization'] = 'Token ' + authToken;
+    }
     const response = await fetch(`https://backendproject-production-637c.up.railway.app/api/polls/${currentPollId}/results/`, {
-      headers: { 'Authorization': 'Token ' + authToken }
+      headers: headers
     });
     if (!response.ok) return alert('❌ Errore nel caricamento dei risultati');
     const results = await response.json();
