@@ -16,7 +16,7 @@ Benvenuto nella **Polling App**, una web app interattiva per creare sondaggi, vo
 - ✅ Creano sondaggi
 - ✅ Modificano o eliminano i propri sondaggi
 - ✅ Aggiungono scelte personalizzate
-- Elenco utenti già registrati: user1(password:1234),user2(password:WA@GY@8shmQEt9p),user3(password:qwertyuiop),user4(password:zxcvbnm),user5(password:1234567890)
+- Elenco utenti già registrati: user1(password:1234, è il superuser),user2(password:WA@GY@8shmQEt9p),user3(password:qwertyuiop),user4(password:zxcvbnm),user5(password:1234567890)
 ---
 
 ## 🧱 Struttura del progetto
